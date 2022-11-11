@@ -1,4 +1,5 @@
 # Getting started
+
 *Prerequisites: To run this project locally, you need to have [Nodejs](https://nodejs.org/) and [MySQL](https://www.mysql.com/) installed on your operating system, remember to start your MySQl server also.*
 
 **Clone this project**
