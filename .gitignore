@@ -40,3 +40,4 @@ Thumbs.db
 
 migrations/*.js
 log
+/docker

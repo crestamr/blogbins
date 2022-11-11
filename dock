@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+
+DATABASE_SERVICE=database
+
+if [ ! -z "$APP_ENV" ] && [ -f ./.env.$APP_ENV ]; then
+  source ./.env.$APP_ENV;
+elif [ -f ./.env ]; then
+  source ./.env;
+fi
+
+UNAMEOUT="$(uname -s)"
+
+# Verify operating system is supported...
+case "${UNAMEOUT}" in
+    Linux*)             MACHINE=linux;;
+    Darwin*)            MACHINE=mac;;
+    *)                  MACHINE="UNKNOWN"
+esac
+
+if [ "$MACHINE" == "UNKNOWN" ]; then
+    echo "Unsupported operating system [$(uname -s)]. Laravel Sail supports macOS, Linux, and Windows (WSL2)." >&2
+
+    exit 1
+fi
+
+# Define Docker Compose command prefix...
+docker compose &> /dev/null
+if [ $? == 0 ]; then
+    DOCKER_COMPOSE="docker compose"
+else
+    DOCKER_COMPOSE="docker-compose"
+fi
+
+if [ $# -eq 0 ]; then
+    DUID=$(id -u) DGID=$(id -g) $DOCKER_COMPOSE ps
+
+    exit 0
+fi
+
+if [ "$1" == "build" ]; then
+    DUID=$(id -u) DGID=$(id -g) $DOCKER_COMPOSE -f docker-compose.yml build --pull
+    exit 0
+fi
+
+# docker compose up
+if [ "$1" == "up" ]; then
+    shift 1
+
+    docker network create --driver bridge traefik_web &> /dev/null || true
+
+    if [ $# -eq 0 ]
+      then
+        docker stop "$(docker ps --filter "publish=80" --filter "publish=443" -q)" || true
+        DUID=$(id -u) DGID=$(id -g) $DOCKER_COMPOSE -f docker-compose.yml up -d --remove-orphans
+    elif [ "$1" == "all" ]; then
+        docker stop "$(docker ps --filter "publish=80" --filter "publish=443" -q)" || true
+        DUID=$(id -u) DGID=$(id -g) $DOCKER_COMPOSE -f docker-compose.yml up -d --remove-orphans
+    else
+        DUID=$(id -u) DGID=$(id -g) $DOCKER_COMPOSE -f docker-compose.yml up -d --remove-orphans "$@"
+    fi
+
+    exit 0
+fi
+
+# docker compose down
+if [ "$1" == "down" ]; then
+    shift 1
+
+    if [ $# -eq 0 ]
+      then
+        DUID=$(id -u) DGID=$(id -g) $DOCKER_COMPOSE -f docker-compose.yml down
+    else
+        DUID=$(id -u) DGID=$(id -g) $DOCKER_COMPOSE rm -s "$@"
+    fi
+
+    exit 0
+fi
+
+# enter into the docker container
+if [ "$1" == "ssh" ]; then
+    shift 1
+
+    if [ ! -z $1 ]; then
+        arrIN=(${1//@/ })
+        sshUser=${arrIN[0]}
+        sshServer=${arrIN[1]}
+
+        sshService=$sshUser
+        if [ ! -z $sshServer ]; then
+            sshUserOption="-u $sshUser"
+            sshService=$sshServer
+        fi
+
+        DUID=$(id -u) DGID=$(id -g) $DOCKER_COMPOSE exec $sshUserOption $sshService sh
+
+        exit 0
+    fi
+
+    exit 0
+fi
+
+
+# To restores db dump
+if [ "$1" == "db:restore" ]; then
+    shift 1
+      $DOCKER_COMPOSE exec -T "$DATABASE_SERVICE" mysql -u"${DB_USERNAME}" -p"${DB_PASSWORD}" "${DB_DATABASE}" <"$@"
+    exit 0
+fi
+
+# Pass unknown commands to the "docker-compose" binary...
+DUID=$(id -u) DGID=$(id -g) $DOCKER_COMPOSE "$@"
+
+exit 0

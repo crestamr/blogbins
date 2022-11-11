@@ -3,10 +3,10 @@ const { getMetadataArgsStorage } = require("typeorm");
 module.exports = {
   type: 'mysql',
   host: 'localhost',
-  port: 3306,
+  port: 3309,
   username: 'root',
-  password: 'qwerty1',
-  database: 'realworld_db',
+  password: 'password',
+  database: 'blogbins',
   synchronize: false,
   entities: getMetadataArgsStorage().tables.map(tbl => tbl.target),
   timezone: 'Z',

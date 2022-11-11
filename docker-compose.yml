@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  database:
+    image: mysql:5.7
+    container_name: "${DOCKER_NAME}_database"
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - ./docker/data/database:/var/lib/mysql:rw
+      - ./scripts:/scripts:rw
+    ports:
+      - ${DOCKER_DB_PORT}:3306
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+    networks:
+      - nestjs
+networks:
+  nestjs:
+    name: traefik_web
+    external: true
